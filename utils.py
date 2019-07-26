@@ -55,7 +55,7 @@ def cost_function(y_test, y_pred, X=None, **kwargs):
     #fp = cm.iloc[1,0]
     #fn = cm.iloc[0,1]
     #return (-.9 * tp + fp * 1.1)
-    return 1.1 * (tp +fp)) + fn + tn - 2*tp - tn - 2*fn - fp 
+    return (1.1 * tp + 1.1*fp + fn + tn - 2*tp - tn - 2*fn - fp )/sum(quantity)
 
 
 def coster(model, X, y):
