@@ -1,21 +1,36 @@
+from sklearn.metrics import f1_score, recall_score, precision_score
+def get_scores(y_test, y_pred, X):
+    print("Precision: %s" % precision_score(y_test, y_pred))
+    print("Recall: %s" % recall_score(y_test, y_pred))
+    print("F1: %s" % f1_score(y_test, y_pred))
+    print("Cost Function: %s" % cost_function(y_test, y_pred, X))
+    
+
 """
 Defining cost function:
-	False Negative: Incurs 2x median price of fuel
-	False Positive: Incurs 1.1x median price of fuel (1 + .1 for storage costs)
-	True Negative: Incurs median cost of fuel (1x)
-	True Positive: Saves 1.1x the cost of fuel (1 + .1 for storage costs)
+    False Negative: Incurs 2x median price of fuel
+    False Positive: Incurs 1.1x median price of fuel (1 + .1 for storage costs)
+    True Negative: Incurs median cost of fuel (1x)
+    True Positive: Saves 1.1x the cost of fuel (1 + .1 for storage costs)
 
 
 Function returns difference of cost based on model minus cost of baseline that assumes no price spikes.
 
 Baseline cost function = 
-	2x median cost of fuel for price spikes (true positives and false negatives) +
-	1x median cost of fuel for all other times (true negatives and false positives)
-	
+    2x median cost of fuel for price spikes (true positives and false negatives) +
+    1x median cost of fuel for all other times (true negatives and false positives)
+    
 """
 
 from sklearn.metrics import make_scorer
-def cost_function(y_test, y_pred, quantity, **kwargs):
+def cost_function(y_test, y_pred, X=None, **kwargs):
+
+    if not len(X): 
+        import numpy as np
+        quantity = np.ones(len(y_test))
+    else:
+        quantity = X.quantity.values
+    
     import pandas as pd
     from sklearn.metrics import confusion_matrix
     cm = pd.DataFrame(confusion_matrix(y_test, y_pred))
@@ -39,11 +54,12 @@ def cost_function(y_test, y_pred, quantity, **kwargs):
     #tn = cm.iloc[0,0]
     #fp = cm.iloc[1,0]
     #fn = cm.iloc[0,1]
-    total = sum([tp, tn, fp, fn])
-    return (((fp * 1.1) + (fn * 2) + (1.1 * tp)  + tn ) - (2* (tp + fn) + (fp + tn)))
+    #return (-.9 * tp + fp * 1.1)
+    return 1.1 * (tp +fp)) + fn + tn - 2*tp - tn - 2*fn - fp 
+
 
 def coster(model, X, y):
     y_pred = model.predict(X)
-    return cost_function(y, y_pred, X.quantity.values)
+    get_scores(y, y_pred, X)
+    return cost_function(y, y_pred, X)
 
-make_scorer(coster, greater_is_better=False)
