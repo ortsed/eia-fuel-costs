@@ -1,5 +1,6 @@
-from sklearn.metrics import f1_score, recall_score, precision_score
+
 def get_scores(y_test, y_pred, X):
+    from sklearn.metrics import f1_score, recall_score, precision_score
     print("Precision: %s" % precision_score(y_test, y_pred))
     print("Recall: %s" % recall_score(y_test, y_pred))
     print("F1: %s" % f1_score(y_test, y_pred))
