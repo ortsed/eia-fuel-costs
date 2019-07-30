@@ -19,7 +19,12 @@ https://www.eia.gov/electricity/data/eia923/
 Excel documents listed on the EIA site go back to around 2002. Only files after 2007 include the full fuel cost data for this analysis, so older files 
 were excluded.
 
-## Process
+The data contains over 440,000 rows and 27 columns. 
+
+## Data Caveat
+Reported fuel cost data to the EIA dropped considerably around 2011, which according to a representative from the agency, was due to limiting reporting only to larger operators who might be less likely to buy fuel in smaller quantities.
+
+# Process
 
  - Export Fuel Costs sheet as CSV from Excel file.
  
@@ -27,7 +32,7 @@ were excluded.
 
  - Merge all files via python into a single dataframe, while taking into account column names with varying spelling and ignoring fields that didn't exist for most years.
 
-## Data Cleaning
+# Data Cleaning
 
  - Deal with NaNs, Nones, and other empty fields (e.g. ".").
 
@@ -37,7 +42,7 @@ were excluded.
  
   - Run text fields - like plant names and operator names - through OpenRefine to coalesce typos and name consistency (e.g. Globocorp Inc. vs. Globocorp LLC)
   
-## Additional Data
+# Additional Data
 
  - Preliminary analysis showed poor modeling with the fuel cost data, and largest correlations were with dates. 
  
@@ -52,19 +57,26 @@ From a client perspective, this analysis didn't provide any insight as it's not 
  	2. EIA also provides data on electricity disruptions that could be correlated with price spikes, shortened supply, and increased demand:
  	
  	https://www.eia.gov/electricity/data/disturbance/disturb_events_archive.html
+ 
  	
 A similar process was used to import, coalesce, clean, and refine both data sets. Generation data included monthly data compiled yearly per row that needed to be melted into one row per month entries.
 
 Both were merged onto the fuel cost data using SQL joins. For generation data, it was joined on plant id, year and month. For disruption data it was joined on NERC region, year, and month. 
 
+Fields included from this import include:
+ 	- Net generation
+ 	- Disturbance events
+ 	- Number Affected (homes affected by disturbance)
+ 
 
-## Preliminary Analysis
+
+# Preliminary Analysis
 
  - Import the cleaned, refined data and begin exploring the numbers. All entries without fuel cost defined were removed.
  
- - For the first iteration, a price spike was defined as any value in the 90th percentile of fuel costs (for that fuel). Mean and standard deviations were thrown off by anomalous values sometimes over 60,000x median values. The 90th percentile starts at fuel costs approximately twice the median. Future analysis will calculate best model based on differing thresholds.
+ - Define price spike (target variable). For the first iteration, a price spike was defined as any value in the 90th percentile of fuel costs (for that fuel). Mean and standard deviations were thrown off by anomalous values sometimes over 60,000x median values. The 90th percentile starts at fuel costs approximately twice the median. Future analysis will calculate best model based on differing thresholds.
  
-  - Because the data included different fields based on fuel type (particularly for coal and natural gas), the data was split based on three fuel groups: Coal, Natural Gas, and Other (Petroleum, Other Gas). Each one will be modeled separately. The data does not include information for nuclear, renewable, hydro or other fuel sources. 
+  - Because the data included different fields based on fuel type (particularly for coal and natural gas), the data was split based on three fuel groups: Coal, Natural Gas, and Other (Petroleum, Other Gas). Each one will be modeled separately. The data does not include information for nuclear, renewable, hydro and some other electricity sources. 
   
   - Decision Tree was chosen as default model as it allows for good performance, feature interpretability, and did not require feature scaling. Testing on other models did not show marked improvement to warrant a change.
   
@@ -74,22 +86,30 @@ Both were merged onto the fuel cost data using SQL joins. For generation data, i
   
  - Since data is relatively imbalanced (90-10 class split), a baseline model was defined as assuming the first class (not a price spike) at all times, which has a 90% accuracy. 
   
-  - With the added generation and disruption data, basic model results returned a 94% accuracy, better than baseline.
+  - With the added generation and disruption data, basic model results returned a 94% accuracy, better than baseline (90%).
   
   - Preliminary feature analysis returned by the model highlighted interesting factors, like individual supplier or plant operators as major factors in price spike prediction.
   
-## Model Scoring
+# Model Scoring
 
-Accuracy provided a general quality measure for the model, but because the data was imbalanced, precision, recall, and F1 were more relevant for predictive robustness.
+Accuracy provided a general quality measure for the model, but because the data was imbalanced, precision, recall, and F1 were more relevant for predictive robustness. Eventually, a cost function was defined based on an assumed utility fuel purchaser looking to avoid price spikes.  
 
-Eventually, a cost function was defined based on an assumed utility fuel purchaser looking to avoid price spikes.  
+The function was defined as the cost difference for buying fuel between using the model and not using the model (baseline). A small penalty is imposed to predicting a price spike (1.1 * median fuel cost, for pre-purchasing or storing fuel) and a price spike is assumed to cost 2x the median fuel cost.
 
-The function was defined as the difference from the baseline model in costs. A small penalty is imposed to assuming a price spike (1.1 * median fuel cost, for pre-purchasing fuel or storing fuel) but there is a benefit to every price spike predicted that avoids at least double the median fuel price.
+`(Cost of Fuel Using Model Predictions) - (Actual Cost of Fuel)`
+
+`(Cost of fuel when model predicts a spike) + (Cost of fuel when model not predicting a spike)  - (Cost of fuel when there isn't a price spike) - (Cost of fuel when there is a price spike)`
+
+`(1.1x # of predicted price spikes)  + (1x # of predicted non-spike purchases)  -  (1x  # of non-price spikes) - (2x # of price spikes)`
+
+`(1.1 * true_positives + 1.1*false_positives) + (false_negatives + true_negatives) - (true_negatives + false_positives) - 2* (false_negatives  + true_positives))/sum(quantity)`
+
+Additionally, the cost function for each entry was scaled by the quantity of fuel purchased (a feature in the dataset), which would weight predictions by the scale of the purchase, and the total was divided by the sum of quantities to return a ratio.
 
 Models were cross validated using precision, recall, and f1 scores as well as the cost function. ROC Curves and AUC values were calculated.
 
 
-## Improving the Model
+# Improving the Model
 
 While the default model returned a respectable score for accuracy, there was plenty of room for improvement. Here are a few alternatives that were attempted:
 
@@ -101,11 +121,9 @@ While the default model returned a respectable score for accuracy, there was ple
  
  - Stratifying independent variable. Little affect on results.
  
-  - Feature removal: removing features whose importance by the default model was equal to zero. This did not largely affect results except for on modelling Other Fuels. 
+  - Feature removal: removing features whose importance by the default model was equal to zero. This did not largely affect results.
   
   - Adjustment for quantity, total spent. Preliminary analysis of the data showed some fuel purchases involved large price spikes on small amounts of purchased fuel. Potentially, when the quantity purchased is small, other costs like transportation may affect the fuel cost ratio. For example, a utility that buys one gallon of natural gas will still need to pay for the transportation costs of that fuel, which might be a thousand dollars.  So the data would list the fuel cost as $1,000/gallon, and would be classified as a price spike in the model. I attempted to account for this by defining columns like adjusted fuel cost, that subtract a fixed amount from the total money spent on fuel, but without having a better understanding about what additional costs like transportation might be, the estimates were arbitrary and did not seem to improve the model.
-  
-Additionally, reporting fuel cost data to the EIA dropped considerably around 2011, which according to a representative from the agency, was due to limiting reporting only to larger operators who might be less likely to buy fuel in smaller quantities.
 
 
 ## Hyperparameter Tuning
@@ -125,25 +143,30 @@ Eventually, 80% worked as the best threshold for better performance without defi
   
 ## Overall Model Result
 
-Decision Tree with max_depth of 10, price threshold of 80%. For Natural Gas, the cost savings was 5% on average with average precision at 64%. Cross validation showed inconsistent results, with some results much better and others worse.
+For coal, which had fewer price spikes than natural gas, the scores were generally good and the model was predictive. AUC over 98%. Precision, F1, and recall all hovered around 50%-80% during K-folds evaluations. Cost-benefit score hovered around 1% (benefit). Not amazing, but showing a benefit to using the model.
 
-For coal, which had fewer price spikes than natural gas, the scores were generally worse, with only a one percent benefit in costs. But advanced analysis indicated improvements for future use.
+ ![Coal Scoring](images/scores_coal.png)
 
-The same for other fuels, which had an approximate 1% cost benefit, inconsistent precision, but a potential benefit from advanced analysis.
+
+The same for petroleum/other fuels, which had an approximate 1% cost benefit, inconsistent precision, but a potential benefit from advanced analysis.
+
+ ![Petroleum/Other Scoring](images/scores_other.png)
+
+For natural gas, the cost/benefit fluctuated between 1% and less (benefit) to over 40% (!) in K-folds evaluation with average precision around 50%. When it predicts, it really predicts, but otherwise it was inconsistent.  
+
+ ![Natural Gas Scoring](images/scores_ng.png)
+
 
 ## Subsetting Data
 
-Analysis of model results showed certain feature values common in inaccurate predictions. For coal, chlorine content appeared to be a volatile factor affecting model prediction. 
+Analysis of model results showed certain feature values common in inaccurate predictions. 
 
-Modelling a subset of the data not including chlorine content improved the model considerably (6% cost, 50% precision). And vice versa for with the data subset with chlorine content (4% cost, 50% precision). Chlorine content is a recent addition to the data and only appears in entries since 2016, potentially related to new MATS rules on power plants for mercury emissions as chlorine content helps reduce those emissions.
+For coal, chlorine content appeared to be a volatile factor affecting model prediction. For natural gas, it was delivery contracts and reporting frequency. For other fuels, it was whether the contract was a spot contract or not.
 
-For other fuels, it was spot contracts that appeared to be the volatile feature. Subsetting the data based on that category improved each model considerably. Spot contracts: (5% benefit, 26% precision). Other Contracts: (6% benefit, 41% precision).
+An analysis of these subsets of data show that the model had better scores in different ways on the subsets.  Like for natural gas, the model was very precise and beneficial for purchases without a delivery contract. 
 
-For natural gas, delivery contract type was the volatile feature. Subset where contract type was unknown provided a more accurate/precise model than the larger data set (9% benefit, 56% precision).
+But when there wasn't a delivery contract, it had a low benefit possibly because it had few price spikes. Although precision was good. 
 
-But for known delivery contracts, the model was still imprecise. Yet, modeling on subsets of that showed improvements. 
-
-Known delivery contracts with automatic reporting showed improved performance (3% benefit, 85% precision). Without automatic reporting, there were few price spikes, and also low benefit to using the model (<1%), but precision was good. (82%)
  
  
  
