@@ -96,15 +96,17 @@ Accuracy provided a general quality measure for the model, but because the data 
 
 The function was defined as the cost difference for buying fuel between using the model and not using the model (baseline). A small penalty is imposed to predicting a price spike (1.1 * median fuel cost, for pre-purchasing or storing fuel) and a price spike is assumed to cost 2x the median fuel cost.
 
-`(Cost of Fuel Using Model Predictions) - (Actual Cost of Fuel)`
+> (Cost of Fuel Using Model Predictions) - (Actual Cost of Fuel)
+> (Cost of fuel when model predicts a spike) + (Cost of fuel when model not predicting a spike)  - (Cost of fuel when there isn't a price spike) - (Cost of fuel when there is a price spike)
+> (1.1x # of predicted price spikes)  + (1x # of predicted non-spike purchases)  -  (1x  # of non-price spikes) - (2x # of price spikes)
 
-`(Cost of fuel when model predicts a spike) + (Cost of fuel when model not predicting a spike)  - (Cost of fuel when there isn't a price spike) - (Cost of fuel when there is a price spike)`
+Additionally, the cost function for each entry was scaled by the quantity of fuel purchased (a feature in the dataset), which would weight predictions by the scale of the purchase, and the total was divided by the sum of quantities to return a ratio. 
 
-`(1.1x # of predicted price spikes)  + (1x # of predicted non-spike purchases)  -  (1x  # of non-price spikes) - (2x # of price spikes)`
+So with quantity of each entry as q(i), the final formula was:
 
-`(1.1 * true_positives + 1.1*false_positives) + (false_negatives + true_negatives) - (true_negatives + false_positives) - 2* (false_negatives  + true_positives))/sum(quantity)`
+> Σ(1.1 * true_positives * q(i) + 1.1*false_positives * q(i)) + (false_negatives * q(i) + true_negatives * q(i)) - (true_negatives + false_positives) - 2* (false_negatives  + true_positives))/Σ q(i) )
 
-Additionally, the cost function for each entry was scaled by the quantity of fuel purchased (a feature in the dataset), which would weight predictions by the scale of the purchase, and the total was divided by the sum of quantities to return a ratio.
+
 
 Models were cross validated using precision, recall, and f1 scores as well as the cost function. ROC Curves and AUC values were calculated.
 
