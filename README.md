@@ -18,8 +18,6 @@ Potential features that drive price include the contract type, the quantity, the
 ![Fuel Cost Price Spikes](images/fuel-cost-vs-quantity.png)
 
 
-
-
 # Download
 
 https://www.eia.gov/electricity/data/eia923/
@@ -169,6 +167,10 @@ For natural gas, the benefit fluctuated between 1% and less to over 40% (!) in K
  ![Natural Gas Scoring](images/scores_ng.png)
  
  
+ # Visualization of Natural Gas Model
+ 
+  ![Natural Gas Decision Tree](images/dtree_render.png)
+ 
 # Feature Analysis
 
 The top important features for natural gas included: net generation, pipeline as transportation, quantity of fuel purchased, b.t.u. generation per unit, and the number of disturbance events.  After that, it also includes individual operators, suppliers, plants, and states, which may be interesting for further analysis.
@@ -227,11 +229,9 @@ plant_name_Syl Laskin 0.00467968815033
 
 Analysis of model results showed certain feature values common in inaccurate predictions. 
 
-For coal, chlorine content appeared to be a volatile factor affecting model prediction. For natural gas, it was delivery contracts and reporting frequency. For other fuels, it was whether the contract was a spot contract or not.
+For coal, chlorine content appeared to be a volatile factor affecting model prediction. For petroleum/other fuels, it was dependent on the purchase being through a spot contract or not. 
 
-An analysis of these subsets of data show that the model had better scores in different ways on the subsets.  Like for natural gas, the model was very precise and beneficial for purchases without a delivery contract. 
-
-But when there wasn't a delivery contract, it had a low benefit possibly because it had few price spikes. Although precision was good. 
+For natural gas, the model was very precise and beneficial for purchases without a delivery contract. But when there wasn't a delivery contract, it had a low benefit possibly because it had few price spikes. Although precision was good. 
 
  
  
