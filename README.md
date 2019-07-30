@@ -12,6 +12,14 @@ This analysis will look at the data of fuel receipts for electricity generation 
 
 Potential features that drive price include the contract type, the quantity, the plant consuming the fuel, the operator, the provider of the fuel (e.g. coal mine), a variety of quality indicators for coal (average_ash_content, average_heat_content, average_mercury_content, average_sulfur_content, chlorine_content), how it was transported (pipeline vs. truck).
 
+
+![Fuel Cost Price Spikes](images/price-spikes-by-month.png)
+
+![Fuel Cost Price Spikes](images/fuel-cost-vs-quantity.png)
+
+
+
+
 # Download
 
 https://www.eia.gov/electricity/data/eia923/
@@ -97,14 +105,16 @@ Accuracy provided a general quality measure for the model, but because the data 
 The function was defined as the cost difference for buying fuel between using the model and not using the model (baseline). A small penalty is imposed to predicting a price spike (1.1 * median fuel cost, for pre-purchasing or storing fuel) and a price spike is assumed to cost 2x the median fuel cost.
 
 > (Cost of Fuel Using Model Predictions) - (Actual Cost of Fuel)
+or: 
 > (Cost of fuel when model predicts a spike) + (Cost of fuel when model not predicting a spike)  - (Cost of fuel when there isn't a price spike) - (Cost of fuel when there is a price spike)
+or: 
 > (1.1x # of predicted price spikes)  + (1x # of predicted non-spike purchases)  -  (1x  # of non-price spikes) - (2x # of price spikes)
 
 Additionally, the cost function for each entry was scaled by the quantity of fuel purchased (a feature in the dataset), which would weight predictions by the scale of the purchase, and the total was divided by the sum of quantities to return a ratio. 
 
 So with quantity of each entry as q(i), the final formula was:
 
-> Σ(1.1 * true_positives * q(i) + 1.1*false_positives * q(i)) + (false_negatives * q(i) + true_negatives * q(i)) - (true_negatives + false_positives) - 2* (false_negatives  + true_positives))/Σ q(i) )
+> Σ(1.1 * true_positives * q(i) + 1.1 * false_positives * q(i)) + (false_negatives * q(i) + true_negatives * q(i)) - (true_negatives + false_positives) - 2 * (false_negatives  + true_positives))/Σ q(i) )
 
 
 
@@ -150,13 +160,67 @@ For coal, which had fewer price spikes than natural gas, the scores were general
  ![Coal Scoring](images/scores_coal.png)
 
 
-The same for petroleum/other fuels, which had an approximate 1% cost benefit, inconsistent precision, but a potential benefit from advanced analysis.
+The same for petroleum/other fuels, which had an approximate 1% benefit, inconsistent precision, but a potential benefit from advanced analysis.
 
  ![Petroleum/Other Scoring](images/scores_other.png)
 
-For natural gas, the cost/benefit fluctuated between 1% and less (benefit) to over 40% (!) in K-folds evaluation with average precision around 50%. When it predicts, it really predicts, but otherwise it was inconsistent.  
+For natural gas, the benefit fluctuated between 1% and less to over 40% (!) in K-folds evaluation with average precision around 50%. When it predicts, it really predicts, but otherwise it was inconsistent.  
 
  ![Natural Gas Scoring](images/scores_ng.png)
+ 
+ 
+# Feature Analysis
+
+The top important features for natural gas included: net generation, pipeline as transportation, quantity of fuel purchased, b.t.u. generation per unit, and the number of disturbance events.  After that, it also includes individual operators, suppliers, plants, and states, which may be interesting for further analysis.
+
+
+>net_generation_megawatthours
+>primary_transportation_mode_PL 0.16883292310929898
+>quantity 0.10335812569910117
+>mmbtu_per_unit_gen 0.039994980759194054
+>disturbance_events 0.03738434137843032
+>operator_id_19876.0 0.03082785674026425
+>supplier_VARIOUS 0.03022527767189032
+>operator_id_12745.0 0.028904979342346666
+>plant_state_NY 0.02545222229682147
+>plant_id_56328 0.02011661237170358
+>supplier_LG&E 0.01975793896187076
+>plant_id_7314 0.019400324671978633
+
+For coal, the top features were mainly related to coal quality: average heat content, sulfur content, ash content, but also railroad as transportation, net generation, quantity,  b.t.u. generation per unit. 
+
+
+average_heat_content 0.24269947984018175
+average_sulfur_content 0.07889742461763186
+primary_transportation_mode_RR 0.0674438778637404
+net_generation_megawatthours 0.0654801754911223
+quantity 0.04572021578662917
+mmbtu_per_unit_gen 0.035824271533678315
+average_ash_content 0.030009349333486736
+nerc_region_RFC 0.016346171581014333
+contract_type_S 0.014685046461589907
+nerc_region_WECC 0.013434731876069465
+coalmine_type_U 0.012376714110869325
+moisture_content 0.011801201915297035
+average_mercury_content 0.010665933440092114
+operator_id_195.0 0.008508934264654815
+nerc_region_FRCC 0.007310446788376852
+
+For petroleum/other fuels, quantity was by far the most important feature, then fuel quality measurements (heat content, sulfur content) but also net generation, and then disturbance events and certain suppliers.
+
+quantity 0.34902638868860136
+net_generation_megawatthours 0.08720992467699985
+average_heat_content 0.06635480371660478
+supplier_PACIFIC BIODIESEL 0.062132622808579265
+average_sulfur_content 0.05156429893988355
+mmbtu_per_unit_gen 0.031710250663085644
+number_affected 0.011925219408571252
+disturbance_events 0.010769318911442876
+census_region_MTN 0.007258697900479671
+contract_type_N/A 0.007245236819584759
+reporting_frequency_A 0.005353884318361435
+energy_source_DFO 0.00496248959779158
+plant_name_Syl Laskin 0.00467968815033
 
 
 ## Subsetting Data
