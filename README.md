@@ -39,13 +39,21 @@ were excluded.
   
 ## Additional Data
 
- - Preliminary analysis showed poor modeling with the fuel cost data, so additional data sources were required. Two additional sources were identified:
+ - Preliminary analysis showed poor modeling with the fuel cost data, and largest correlations were with dates. 
+ 
+ ![Coal Fuel Costs Decision Tree](images/tree-date-based.png)
+
+From a client perspective, this analysis didn't provide any insight as it's not prescriptive. The model doesn't predict for future dates unless a time-based model is used, and a basic analysis of time correlations didn't show any significant trends.
+ 
+ So dates were removed from features and additional data sources were required. Two additional sources were identified:
  
  	1. In the Form 923 spreadsheet, another sheet included data on monthly fuel consumption/generation for each plant that aligns with the plants listed in the fuel cost data.
  	
- 	2. EIA also provides data on electricity disruptions that could be correlated with price spikes, shortened supply, and increased demand.
+ 	2. EIA also provides data on electricity disruptions that could be correlated with price spikes, shortened supply, and increased demand:
  	
- A similar process was used to import coalesce, clean, and refine both data sets. Generation data included monthly data compiled yearly per row that needed to be melted into one row per month entries.
+ 	https://www.eia.gov/electricity/data/disturbance/disturb_events_archive.html
+ 	
+A similar process was used to import, coalesce, clean, and refine both data sets. Generation data included monthly data compiled yearly per row that needed to be melted into one row per month entries.
 
 Both were merged onto the fuel cost data using SQL joins. For generation data, it was joined on plant id, year and month. For disruption data it was joined on NERC region, year, and month. 
 
@@ -89,6 +97,8 @@ While the default model returned a respectable score for accuracy, there was ple
  
  - Other models. Random Forest, Keras/TensorFlow, GradientBoosting, and LogisitcRegression were tried as comparison models to confirm that DecisionTree was not severely lacking in potential accuracy, but none of these returned substantially improved results.
  
+  - Some time-series analysis was done to identify if ARIMA would help, but no time-based correlations were identified.
+ 
  - Stratifying independent variable. Little affect on results.
  
   - Feature removal: removing features whose importance by the default model was equal to zero. This did not largely affect results except for on modelling Other Fuels. 
@@ -129,7 +139,7 @@ Modelling a subset of the data not including chlorine content improved the model
 
 For other fuels, it was spot contracts that appeared to be the volatile feature. Subsetting the data based on that category improved each model considerably. Spot contracts: (5% benefit, 26% precision). Other Contracts: (6% benefit, 41% precision).
 
-For natural gas, delivery contract type may be a volatile feature. Subset where contract type was unknown provided a more accurate/precise model than the larger data set (9% benefit, 56% precision).
+For natural gas, delivery contract type was the volatile feature. Subset where contract type was unknown provided a more accurate/precise model than the larger data set (9% benefit, 56% precision).
 
 But for known delivery contracts, the model was still imprecise. Yet, modeling on subsets of that showed improvements. 
 
