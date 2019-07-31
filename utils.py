@@ -1,16 +1,17 @@
 
 def get_scores(y_test, y_pred, X):
-    from sklearn.metrics import f1_score, recall_score, precision_score
+    from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_score
     precision = precision_score(y_test, y_pred)
     recall =  recall_score(y_test, y_pred)
     f1 = f1_score(y_test, y_pred)
     cost = cost_function(y_test, y_pred, X)
+    accuracy = accuracy_score(y_test, y_pred)
     
     print("Precision: %s" % precision)
     print("Recall: %s" % recall)
     print("F1: %s" % f1)
     print("Cost Function: %s" % cost)
-    return {"precision": precision, "recall": recall, "f1": f1, "cost": cost}
+    return {"precision": precision, "recall": recall, "f1": f1, "cost": cost, "accuracy": accuracy}
     
 
 """
