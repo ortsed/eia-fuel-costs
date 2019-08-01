@@ -5,25 +5,25 @@
 
 A classification of utility fuel cost price spikes based on quantity purchased, transportation mode, supplier, operator, power plant, energy generation, efficiency, coal mine, fuel quality, disruptions in service, and reporting type.
 
-Data modeled using Decision Tree with 80% precision on average, 94% AUC, and a cost-benefit metric of 1% (benefit) with intermittement benefits of up to 40%.
+Data modeled using Decision Tree with 80% precision on average, 94% AUC, and a cost-benefit metric of 1% (benefit) with intermittement benefits of up to 40%. Benefit is determined by a custom cost metric that imposes a small cost on false positives and a larger benefit to true positives. 
 
-By fuel, it was a 9.2% benefit for coal, 9% benefit for natural gas, and a 5.4% benefit for petroleum/other fuels. Benefit is determined by a custom cost metric that imposes a small cost on false positives and a larger benefit to true positives. 
+Fuels were modeled separately—one for coal, natural gas, and petroleum/other respectively—because each had their own distinct features, different price points, and unique trends.
+
+By fuel, the model returned a 9.2% benefit for coal, 9% benefit for natural gas, and a 5.4% benefit for petroleum/other fuels. 
 
 ![Natural Gas Decision Tree](images/dtree_render.png)
-
-
 
 ## Description
 
 What drives the cost of electricity can be a complicated question. Weather conditions like the Polar Vortex can drive sharp spikes in prices for fuel, and market fluctuations and accusations of manipulation [often end in protracted lawsuits](https://www.bloomberg.com/news/articles/2019-07-12/darkest-california-power-market-lures-repeat-manipulation). 
 
-Thankfully the U.S. Energy Administration (EIA) puts out mountains of data on the subject that's ready to be analyzed.
+The U.S. Energy Administration (EIA) puts out mountains of data on the subject that's ready to be analyzed.
 
 Their energy industry data covers every kind of fuel and every way it could possibly be consumed. One particular data set is the Form 923 data that collects "detailed electric power data -- monthly and annually -- on electricity generation, fuel consumption, fossil fuel stocks, and receipts at the power plant and prime mover level."
 
 This analysis will look at the data of fuel receipts for electricity generation from form 923, which includes how much utilities pay for their fuel generation. Each spreadsheet contains prices paid for fuel for Coal, Natural Gas, Petroleum, Petroleum Coke. Other energy sources like nuclear do not appear.
 
-Potential features that drive price include the contract type, the quantity, the plant consuming the fuel, the operator, the provider of the fuel (e.g. coal mine), a variety of quality indicators for coal (average_ash_content, average_heat_content, average_mercury_content, average_sulfur_content, chlorine_content), how it was transported (pipeline vs. truck).
+Potential features that drive price include contract type, quantity, the plant consuming the fuel, plant operator, provider of the fuel (e.g. coal mine), a variety of quality indicators for coal (average_ash_content, average_heat_content, average_mercury_content, average_sulfur_content, chlorine_content), or how it was transported (pipeline vs. truck).
 
 
 ![Fuel Cost Price Spikes](images/price-spikes-by-month.png)
@@ -33,12 +33,9 @@ Potential features that drive price include the contract type, the quantity, the
 
 # Download
 
-https://www.eia.gov/electricity/data/eia923/
+[https://www.eia.gov/electricity/data/eia923/](https://www.eia.gov/electricity/data/eia923/)
 
-Excel documents listed on the EIA site go back to around 2002. Only files after 2007 include the full fuel cost data for this analysis, so older files 
-were excluded.
-
-The data contains over 440,000 rows and 27 columns. 
+Excel documents listed on the EIA site go back to around 2002. Only files after 2007 include the full fuel cost data for this analysis, so older files were excluded. The data contains over 440,000 rows and 27 columns. 
 
 ## Data Caveat
 Reported fuel cost data to the EIA dropped considerably around 2011, which according to a representative from the agency, was due to limiting reporting only to larger operators who might be less likely to buy fuel in smaller quantities.
@@ -136,17 +133,21 @@ Models were cross validated using precision, recall, and f1 scores as well as th
 
 While the default model returned a respectable score for accuracy, there was plenty of room for improvement. Here are a few alternatives that were attempted:
 
- - SMOTE and ADASYN for class imbalance. Both transformations caused the model to decline in accuracy, possibly because the data wasn't imbalanced enough.
+	- SMOTE and ADASYN for class imbalance. Both transformations caused the model to decline in accuracy, possibly because the data wasn't imbalanced enough.
  
- - Other models. Random Forest, Keras/TensorFlow, GradientBoosting, and LogisitcRegression were tried as comparison models to confirm that DecisionTree was not severely lacking in potential accuracy, but none of these returned substantially improved results.
+	- Other models. Random Forest, Keras/TensorFlow, GradientBoosting, and LogisitcRegression were tried as comparison models to confirm that DecisionTree was not severely lacking in potential accuracy, but none of these returned substantially improved results.
  
-  - Some time-series analysis was done to identify if ARIMA would help, but no time-based correlations were identified.
+	- Some time-series analysis was done to identify if ARIMA would help, but no time-based correlations were identified.
  
- - Stratifying independent variable. Little affect on results.
+	- Stratifying independent variable. Little affect on results.
  
-  - Feature removal: removing features whose importance by the default model was equal to zero. This did not largely affect results.
-  
-  - Adjustment for quantity, total spent. Preliminary analysis of the data showed some fuel purchases involved large price spikes on small amounts of purchased fuel. Potentially, when the quantity purchased is small, other costs like transportation may affect the fuel cost ratio. For example, a utility that buys one gallon of natural gas will still need to pay for the transportation costs of that fuel, which might be a thousand dollars.  So the data would list the fuel cost as $1,000/gallon, and would be classified as a price spike in the model. I attempted to account for this by defining columns like adjusted fuel cost, that subtract a fixed amount from the total money spent on fuel, but without having a better understanding about what additional costs like transportation might be, the estimates were arbitrary and did not seem to improve the model.
+	- Feature removal: removing features whose importance by the default model was equal to zero. This did not largely affect results.
+
+## Sample Weighting on Quantity
+
+Since the quantity of fuel purchased determines the scale of the effect of the purchase, it makes sense to weight the sampling by that. Especially since the cost function is being weighted by quantity. 
+
+Adding the sample weighting did seem to improve the result for certain k-folds tests, but it seem to add more inconsistency to the model. So it was removed, with the possibility of adding it back in if given additional time and testing.
 
 
 ## Hyperparameter Tuning
@@ -199,7 +200,7 @@ For petroleum/other fuels, quantity was by far the most important feature, then 
 ![Petroleum/Other Important Features](images/features-other.png)
 
 
-## Subsetting Data
+## Subset Analysis
 
 Analysis of model results showed certain feature values common in inaccurate predictions. 
 
